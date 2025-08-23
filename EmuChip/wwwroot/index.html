@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chip-8 WASM Emulator</title>
+  <style>
+    body {
+      background-color: #0d0d0d;
+      color: #c0ffee;
+      font-family: monospace;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      padding: 1rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 0 10px #c0ffee;
+    }
+    #about {
+      font-size: 0.8rem;
+      color: #88bbbb;
+      max-width: 640px;
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    #rom-selector-container {
+      margin-bottom: 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    select {
+      background: #1a1a1a;
+      border: 1px solid #c0ffee;
+      color: #c0ffee;
+      padding: 0.25rem 0.5rem;
+      font-family: monospace;
+      border-radius: 4px;
+    }
+    .description {
+      font-size: 0.8rem;
+      color: #88bbbb;
+      max-width: 640px;
+      text-align: center;
+    }
+    .controls {
+      font-size: 0.8rem;
+      color: #aaffaa;
+      max-width: 640px;
+      text-align: center;
+    }
+    canvas {
+      background-color: #000;
+      image-rendering: pixelated;
+      width: 640px;
+      height: 320px;
+      border: 2px solid #c0ffee;
+      box-shadow: 0 0 20px #0ff;
+    }
+  </style>
+</head>
+<body>
+<h1>Chip-8 Emulator</h1>
+
+<div id="about">
+  CHIP-8 is a lightweight interpreted virtual machine originally designed for 8-bit microcomputers.
+  It features a 4K memory space, 16 8-bit registers, a 64×32 monochrome display, a stack for subroutines,
+  and simple timers for delay and sound. This emulator replicates the CHIP-8 hardware in software,
+  written in C# and compiled into WebAssembly for execution directly in the browser.
+  Created by <a href="https://github.com/timmoth" target="_blank" style="color:#c0ffee;">Tim Jones</a>.
+</div>
+
+<div id="rom-selector-container">
+  <select id="rom-selector"></select>
+  <div class="description" id="rom-description"></div>
+  <div class="controls" id="rom-controls"></div>
+</div>
+
+<canvas id="display" width="64" height="32"></canvas>
+
+<script type="module" src="main.js"></script>
+</body>
+</html>
