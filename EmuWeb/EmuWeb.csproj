@@ -5,4 +5,7 @@
     <RootNamespace>EmuChip</RootNamespace>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\EmuShared\EmuShared.csproj" />
+  </ItemGroup>
 </Project>

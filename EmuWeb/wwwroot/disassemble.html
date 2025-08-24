@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF--8">
+  <title>Chip-8 Disassembler</title>
+  <style>
+    body {
+      background-color: #0d0d0d;
+      color: #c0ffee;
+      font-family: monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem;
+      margin: 0;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 0 10px #c0ffee;
+    }
+    #rom-selector-container {
+      margin-bottom: 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .selector-row {
+      display: flex;
+      flex-direction: row;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    select, input[type="file"] {
+      background: #1a1a1a;
+      border: 1px solid #c0ffee;
+      color: #c0ffee;
+      padding: 0.25rem 0.5rem;
+      font-family: monospace;
+      border-radius: 4px;
+    }
+    #disasm-table {
+      border-collapse: collapse;
+      margin-top: 1rem;
+      width: 90%;
+      max-width: 900px;
+    }
+    #disasm-table th, #disasm-table td {
+      border: 1px solid #444;
+      padding: 0.25rem 0.5rem;
+      text-align: left;
+    }
+    #disasm-table th {
+      background-color: #111;
+      color: #0ff;
+    }
+    #disasm-output {
+      overflow-y: auto;
+      max-height: 50vh;
+      width: 100%;
+    }
+    #chart-container {
+      margin-top: 2rem;
+      width: 90%;
+      max-width: 900px;
+      background: #111;
+      padding: 1rem;
+      border: 1px solid #0ff;
+      border-radius: 6px;
+    }
+    canvas {
+      width: 100%;
+      height: 300px; /* Made the canvas a bit smaller */
+    }
+    a {
+      color: #c0ffee;
+    }
+    #github_link {
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+<h1>Chip-8 Disassembler</h1>
+
+<div id="rom-selector-container">
+  <div class="selector-row">
+    <select id="rom-selector"></select>
+    <span>or upload:</span>
+    <input type="file" id="rom-upload" accept=".ch8,.rom,.bin" />
+  </div>
+  <div class="description" id="rom-description"></div>
+</div>
+
+<div id="disasm-output">
+  <table id="disasm-table">
+    <thead>
+    <tr>
+      <th>#</th>
+      <th>Addr</th>
+      <th>Hex</th>
+      <th>Op</th>
+      <th>ASM</th>
+      <th>Description</th>
+    </tr>
+    </thead>
+    <tbody id="disasm-body"></tbody>
+  </table>
+</div>
+
+<div id="chart-container">
+  <h2 style="color:#0ff; text-shadow:0 0 6px #0ff;">Instruction Frequency</h2>
+  <canvas id="op-chart"></canvas>
+</div>
+
+<div id="github_link">
+  Created by <a href="https://github.com/timmoth" target="_blank">Tim Jones</a> —
+  <a href="https://github.com/Timmoth/EmuChip" target="_blank">Source</a>
+</div>
+
+<script type="module">
+  import { dotnet } from './_framework/dotnet.js'
+
+  const romsRespone = await fetch('./roms.json');
+  const roms = await romsRespone.json();
+
+  // .NET WASM Setup
+  const { getAssemblyExports, getConfig } = await dotnet
+          .withDiagnosticTracing(false)
+          .create();
+
+  const config = getConfig();
+  const exports = await getAssemblyExports(config.mainAssemblyName);
+  const chip8 = exports.Chip8EmulatorApi;
+
+  const romSelector = document.getElementById("rom-selector");
+  const romUpload = document.getElementById("rom-upload");
+  const disasmBody = document.getElementById("disasm-body");
+  const chartCanvas = document.getElementById("op-chart");
+  let ctx = chartCanvas.getContext("2d");
+
+  // Populate dropdown
+  roms.forEach(rom => {
+    const opt = document.createElement("option");
+    opt.value = rom.filename;
+    opt.textContent = rom.name;
+    opt.dataset.description = rom.description;
+    romSelector.appendChild(opt);
+  });
+
+  /**
+   * REBUILT drawChart function to be sharp on all screens and have proper padding.
+   */
+  function drawChart(frequencies) {
+    const entries = Object.entries(frequencies).sort((a, b) => b[1] - a[1]);
+    const maxCount = entries[0]?.[1] || 1;
+
+    // --- Layout and Padding ---
+    const barHeight = 18;
+    const gap = 5;
+    const paddingTop = 15;
+    const paddingBottom = 15;
+    const paddingLeft = 10;
+    const paddingRight = 10;
+    const labelWidth = 60; // Space for the instruction text (e.g., "Annn")
+    const countWidth = 40; // Space for the count number
+
+    const totalChartHeight = (entries.length * (barHeight + gap)) - gap + paddingTop + paddingBottom;
+
+    // --- High-DPI Canvas Setup for Sharpness ---
+    const dpr = window.devicePixelRatio || 1;
+    const rect = chartCanvas.getBoundingClientRect();
+
+    // Set the canvas's internal drawing buffer size
+    chartCanvas.width = rect.width * dpr;
+    chartCanvas.height = totalChartHeight * dpr;
+
+    // Set the canvas's display size on the page
+    chartCanvas.style.width = `${rect.width}px`;
+    chartCanvas.style.height = `${totalChartHeight}px`;
+
+    // Scale the drawing context to work with logical pixels
+    ctx.scale(dpr, dpr);
+    // --- End High-DPI Setup ---
+
+    ctx.clearRect(0, 0, rect.width, totalChartHeight);
+    ctx.font = "13px monospace";
+
+    // Calculate the maximum width available for the bars themselves
+    const availableBarWidth = rect.width - paddingLeft - labelWidth - countWidth - paddingRight;
+
+    entries.forEach(([op, count], i) => {
+      const y = paddingTop + i * (barHeight + gap);
+      const barWidth = (count / maxCount) * availableBarWidth;
+
+      // Opcode Label (e.g., "1nnn")
+      ctx.fillStyle = "#c0ffee";
+      ctx.textAlign = "left";
+      ctx.fillText(op, paddingLeft, y + barHeight - 4);
+
+      // Bar
+      ctx.fillStyle = "#0ff";
+      ctx.fillRect(paddingLeft + labelWidth, y, barWidth, barHeight);
+
+      // Count Label
+      ctx.fillStyle = "#c0ffee";
+      ctx.textAlign = "left";
+      ctx.fillText(count, paddingLeft + labelWidth + barWidth + 5, y + barHeight - 4);
+    });
+  }
+
+  // Helper: Disassemble a byte array
+  async function disassemble(bytes) {
+    disasmBody.innerHTML = "";
+    let pc = 0x200;
+    const frequencies = {};
+
+    for (let i = 0; i < bytes.length; i += 2) {
+      const opcode = (bytes[i] << 8) | (bytes[i + 1] ?? 0);
+      const [asm, desc, inst] = chip8.Disassemble(opcode).split("|");
+
+      frequencies[inst] = (frequencies[inst] || 0) + 1;
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${i / 2}</td>
+        <td>0x${pc.toString(16).padStart(3, "0")}</td>
+        <td>0x${opcode.toString(16).padStart(4, "0")}</td>
+        <td>${inst}</td>
+        <td>${asm}</td>
+        <td>${desc}</td>
+      `;
+      disasmBody.appendChild(tr);
+      pc += 2;
+    }
+
+    drawChart(frequencies);
+  }
+
+  // Handle dropdown selection
+  romSelector.addEventListener("change", async () => {
+    const selected = roms.find(r => r.filename === romSelector.value);
+    if (!selected) return;
+
+    document.getElementById("rom-description").textContent = selected.description;
+    const res = await fetch(selected.filename);
+    const buffer = await res.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    disassemble(bytes);
+  });
+
+  // Handle file upload
+  romUpload.addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    document.getElementById("rom-description").textContent = `Uploaded: ${file.name}`;
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    disassemble(bytes);
+  });
+
+  // Auto-select rom from query param if present
+  const params = new URLSearchParams(window.location.search);
+  const romParam = params.get("rom");
+  if (romParam) {
+    const selected = roms.find(r => r.name === romParam);
+    if (selected) {
+      romSelector.value = selected.filename;
+    }
+  }
+  // Trigger initial load
+  romSelector.dispatchEvent(new Event("change"));
+</script>
+</body>
+</html>

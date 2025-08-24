@@ -7,6 +7,13 @@ public static partial class Chip8EmulatorApi
     private static readonly Chip8Emulator Emulator = new();
 
     [JSExport]
+    internal static string Disassemble(int opcode)
+    {
+        var result = Chip8Disassembler.Disassemble((ushort)opcode);
+        return $"{result[0]}|{result[1]}|{result[2]}";
+    }
+    
+    [JSExport]
     internal static void Initialize(byte[] romBytes)
     {
         Emulator.Initialize(romBytes);

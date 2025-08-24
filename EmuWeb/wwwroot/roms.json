@@ -1,0 +1,50 @@
+[
+  {
+    "name": "Maze",
+    "filename": "./roms/Maze [David Winter, 199x].ch8",
+    "description": "Generates and displays random mazes.",
+    "controls": "No controls required; the maze draws automatically."
+  },
+  {
+    "name": "Space Invaders",
+    "filename": "./roms/Space Invaders [David Winter, 1997].ch8",
+    "description": "Shoot the advancing alien invaders before they reach the ground.",
+    "controls": "Use Q to move left, E to move right, and W to shoot."
+  },
+  {
+    "name": "Sierpinski Triangle",
+    "filename": "./roms/Sierpinski [Sergey Naydenov, 2010].ch8",
+    "description": "Demo program that draws a fractal Sierpinski triangle.",
+    "controls": "No controls required; the triangle draws automatically."
+  },
+  {
+    "name": "Tetris",
+    "filename": "./roms/Tetris [Fran Dachille, 1991].ch8",
+    "description": "Classic falling block puzzle game adapted for Chip-8.",
+    "controls": "Use Q to rotate, W to move left, E to move right, and A to drop faster."
+  },
+  {
+    "name": "Pong",
+    "filename": "./roms/Pong [Paul Vervalin, 1990].ch8",
+    "description": "Two-player paddle and ball classic Pong.",
+    "controls": "Player 1: 1 (up) and Q (down). Player 2: 4 (up) and R (down)."
+  },
+  {
+    "name": "Particle Demo",
+    "filename": "./roms/Particle Demo [zeroZshadow, 2008].ch8",
+    "description": "Animated particle effect demo, used for benchmarking.",
+    "controls": "No controls; particles animate automatically."
+  },
+  {
+    "name": "Trip8 Demo",
+    "filename": "./roms/Trip8 Demo (2008) [Revival Studios].ch8",
+    "description": "Scrolling text and graphical effects demo.",
+    "controls": "No controls; the demo plays automatically."
+  },
+  {
+    "name": "Kaleidoscope",
+    "filename": "./roms/Kaleidoscope [Joseph Weisbecker, 1978].ch8",
+    "description": "Colorful kaleidoscopic pattern rendering demo.",
+    "controls": "Use 2 (up), S (down), Q (left), and E (right). Press X to reset/replay."
+  }
+]

@@ -1,67 +1,11 @@
 import { dotnet } from './_framework/dotnet.js'
 
-const roms =[
-    {
-        "name": "Maze",
-        "filename": "Maze [David Winter, 199x].ch8",
-        "description": "Generates and displays random mazes.",
-        "controls": "No controls required; the maze draws automatically.",
-        "clock": 1000,
-    },
-    {
-        "name": "Space Invaders",
-        "filename": "Space Invaders [David Winter, 1997].ch8",
-        "description": "Shoot the advancing alien invaders before they reach the ground.",
-        "controls": "Use Q to move left, E to move right, and W to shoot.",
-        "clock": 1000,
-    },
-    {
-        "name": "Sierpinski Triangle",
-        "filename": "Sierpinski [Sergey Naydenov, 2010].ch8",
-        "description": "Demo program that draws a fractal Sierpinski triangle.",
-        "controls": "No controls required; the triangle draws automatically.",
-        "clock": 1000,
-    },
-    {
-        "name": "Tetris",
-        "filename": "Tetris [Fran Dachille, 1991].ch8",
-        "description": "Classic falling block puzzle game adapted for Chip-8.",
-        "controls": "Use Q to rotate, W to move left, E to move right, and A to drop faster.",
-        "clock": 1000,
-    },
-    {
-        "name": "Pong",
-        "filename": "Pong [Paul Vervalin, 1990].ch8",
-        "description": "Two-player paddle and ball classic Pong.",
-        "controls": "Player 1: 1 (up) and Q (down). Player 2: 4 (up) and R (down).",
-        "clock": 1000,
-    },
-    {
-        "name": "Particle Demo",
-        "filename": "Particle Demo [zeroZshadow, 2008].ch8",
-        "description": "Animated particle effect demo, used for benchmarking.",
-        "controls": "No controls; particles animate automatically.",
-        "clock": 1000,
-    },
-    {
-        "name": "Trip8 Demo",
-        "filename": "Trip8 Demo (2008) [Revival Studios].ch8",
-        "description": "Scrolling text and graphical effects demo.",
-        "controls": "No controls; the demo plays automatically.",
-        "clock": 1000,
-    },
-    {
-        "name": "Kaleidoscope",
-        "filename": "Kaleidoscope [Joseph Weisbecker, 1978].ch8",
-        "description": "Colorful kaleidoscopic pattern rendering demo.",
-        "controls": "Use 2 (up), S (down), Q (left), and E (right). Press X to reset/replay.",
-        "clock": 1000,
-    }
-]
 
+const romsRespone = await fetch('./roms.json');
+const roms = await romsRespone.json();
 
 // Constants
-let ROM_PATH = `./roms/${roms[0].filename}`;
+let ROM_PATH = roms[0].filename;
 let CPU_HZ = 2000;
 const TIMER_HZ = 60;
 const ON_COLOR = { r: 192, g: 255, b: 238 }; // #c0ffee
@@ -221,7 +165,7 @@ function renderDisplay() {
 // Initialization
 async function start(romFilename) {
     try {
-        const response = await fetch(`./roms/${romFilename}`);
+        const response = await fetch(romFilename);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const romBytes = new Uint8Array(await response.arrayBuffer());
         chip8.Initialize(romBytes);
@@ -243,7 +187,9 @@ const romSelector = document.getElementById("rom-selector");
 const romDescription = document.getElementById("rom-description");
 const romControls = document.getElementById("rom-controls");
 const clockSelector = document.getElementById("clock-selector");
+const disassembleBtn = document.getElementById("disassemble-btn");
 
+let selectedRomName = null;
 if (romSelector) {
     roms.forEach((rom) => {
         const option = document.createElement("option");
@@ -253,6 +199,7 @@ if (romSelector) {
     });
     romSelector.addEventListener("change", (e) => {
         const selectedRom = roms.find(r => r.filename === e.target.value);
+        selectedRomName = selectedRom.name;
         if (selectedRom) {
             romDescription.textContent = selectedRom.description;
             romControls.textContent = selectedRom.controls;
@@ -263,8 +210,13 @@ if (romSelector) {
         CPU_HZ = e.target.value
         cpuInterval = 1 / CPU_HZ;
     })
+
+    disassembleBtn.addEventListener("click", (e) => {
+        window.location.href = `disassemble.html?rom=${encodeURIComponent(selectedRomName)}`;
+    })
     // Initialize with first ROM
     const initialRom = roms[0];
+    selectedRomName = initialRom.name;
     romSelector.value = initialRom.filename;
     romDescription.textContent = initialRom.description;
     romControls.textContent = initialRom.controls;

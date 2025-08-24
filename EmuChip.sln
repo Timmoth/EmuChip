@@ -2,7 +2,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmuChip", "EmuChip\EmuChip.csproj", "{E7B1588E-0A2C-F33A-0D18-0F339FEF0439}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmuWeb", "EmuWeb\EmuWeb.csproj", "{E7B1588E-0A2C-F33A-0D18-0F339FEF0439}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmuDesktop", "EmuDesktop\EmuDesktop.csproj", "{3F3856B1-34CD-41FA-9CE1-9D9D898F0300}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmuShared", "EmuShared\EmuShared.csproj", "{09F3BB45-1F44-4729-BC64-503A3A280F80}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -14,6 +18,14 @@ Global
 		{E7B1588E-0A2C-F33A-0D18-0F339FEF0439}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E7B1588E-0A2C-F33A-0D18-0F339FEF0439}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E7B1588E-0A2C-F33A-0D18-0F339FEF0439}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3F3856B1-34CD-41FA-9CE1-9D9D898F0300}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3F3856B1-34CD-41FA-9CE1-9D9D898F0300}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3F3856B1-34CD-41FA-9CE1-9D9D898F0300}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3F3856B1-34CD-41FA-9CE1-9D9D898F0300}.Release|Any CPU.Build.0 = Release|Any CPU
+		{09F3BB45-1F44-4729-BC64-503A3A280F80}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{09F3BB45-1F44-4729-BC64-503A3A280F80}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{09F3BB45-1F44-4729-BC64-503A3A280F80}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{09F3BB45-1F44-4729-BC64-503A3A280F80}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

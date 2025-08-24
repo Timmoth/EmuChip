@@ -48,7 +48,8 @@
       gap: 0.5rem;
       align-items: center;
     }
-    select {
+    /* Style for both selects and the new button */
+    select, button {
       background: #1a1a1a;
       border: 1px solid #c0ffee;
       color: #c0ffee;
@@ -58,6 +59,15 @@
     }
     #clock-selector {
       width: 120px; /* smaller than the ROM selector */
+    }
+    /* Added button-specific styles */
+    button {
+      cursor: pointer;
+      transition: background-color 0.2s, border-color 0.2s;
+    }
+    button:hover {
+      background-color: #222;
+      border-color: #0ff;
     }
     .description {
       font-size: 0.8rem;
@@ -100,6 +110,7 @@
       <option value="1000" selected="selected">1000 Hz</option>
       <option value="2000">2000 Hz</option>
     </select>
+    <button id="disassemble-btn">Disassemble</button>
   </div>
   <div class="description" id="rom-description"></div>
   <div class="controls" id="rom-controls"></div>
@@ -108,12 +119,9 @@
 <canvas id="display" width="64" height="32"></canvas>
 
 <div id="github_link">
-  Created by <a href="https://github.com/timmoth" target="_blank" style="color:#c0ffee;">Tim Jones</a>.
+  Created by <a href="https://github.com/timmoth" target="_blank" style="color:#c0ffee;">Tim Jones</a> —
+  <a href="https://github.com/Timmoth/EmuChip" target="_blank" style="color:#c0ffee;">Source on GitHub</a>.
 </div>
-<div id="github_link">
-  <a href="https://github.com/Timmoth/EmuChip" target="_blank" style="color:#c0ffee;">Source available on GitHub</a>.
-</div>
-
 
 <script type="module" src="main.js"></script>
 </body>
