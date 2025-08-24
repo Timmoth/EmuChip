@@ -5,60 +5,68 @@ const roms =[
         "name": "Maze",
         "filename": "Maze [David Winter, 199x].ch8",
         "description": "Generates and displays random mazes.",
-        "controls": "No controls required; the maze draws automatically."
+        "controls": "No controls required; the maze draws automatically.",
+        "clock": 1000,
     },
     {
         "name": "Space Invaders",
         "filename": "Space Invaders [David Winter, 1997].ch8",
         "description": "Shoot the advancing alien invaders before they reach the ground.",
-        "controls": "Use Q to move left, E to move right, and W to shoot."
+        "controls": "Use Q to move left, E to move right, and W to shoot.",
+        "clock": 1000,
     },
     {
         "name": "Sierpinski Triangle",
         "filename": "Sierpinski [Sergey Naydenov, 2010].ch8",
         "description": "Demo program that draws a fractal Sierpinski triangle.",
-        "controls": "No controls required; the triangle draws automatically."
+        "controls": "No controls required; the triangle draws automatically.",
+        "clock": 1000,
     },
     {
         "name": "Tetris",
         "filename": "Tetris [Fran Dachille, 1991].ch8",
         "description": "Classic falling block puzzle game adapted for Chip-8.",
-        "controls": "Use Q to rotate, W to move left, E to move right, and A to drop faster."
+        "controls": "Use Q to rotate, W to move left, E to move right, and A to drop faster.",
+        "clock": 1000,
     },
     {
         "name": "Pong",
         "filename": "Pong [Paul Vervalin, 1990].ch8",
         "description": "Two-player paddle and ball classic Pong.",
-        "controls": "Player 1: 1 (up) and Q (down). Player 2: 4 (up) and R (down)."
+        "controls": "Player 1: 1 (up) and Q (down). Player 2: 4 (up) and R (down).",
+        "clock": 1000,
     },
     {
         "name": "Particle Demo",
         "filename": "Particle Demo [zeroZshadow, 2008].ch8",
         "description": "Animated particle effect demo, used for benchmarking.",
-        "controls": "No controls; particles animate automatically."
+        "controls": "No controls; particles animate automatically.",
+        "clock": 1000,
     },
     {
         "name": "Trip8 Demo",
         "filename": "Trip8 Demo (2008) [Revival Studios].ch8",
         "description": "Scrolling text and graphical effects demo.",
-        "controls": "No controls; the demo plays automatically."
+        "controls": "No controls; the demo plays automatically.",
+        "clock": 1000,
     },
     {
         "name": "Kaleidoscope",
         "filename": "Kaleidoscope [Joseph Weisbecker, 1978].ch8",
         "description": "Colorful kaleidoscopic pattern rendering demo.",
-        "controls": "Use 2 (up), S (down), Q (left), and E (right). Press X to reset/replay."
+        "controls": "Use 2 (up), S (down), Q (left), and E (right). Press X to reset/replay.",
+        "clock": 1000,
     }
 ]
 
 
 // Constants
 let ROM_PATH = `./roms/${roms[0].filename}`;
-const CPU_HZ = 700;
+let CPU_HZ = 2000;
 const TIMER_HZ = 60;
-const CYCLES_PER_TIMER_TICK = Math.round(CPU_HZ / TIMER_HZ);
-const ON_COLOR = '#c0ffee';
-const OFF_COLOR = '#000000';
+const ON_COLOR = { r: 192, g: 255, b: 238 }; // #c0ffee
+const OFF_COLOR = { r: 0, g: 0, b: 0 };     // #000000
+const PHOSPHOR_DECAY_RATE = 0.80; // Lower = faster fade, Higher = longer trail
 
 // .NET WASM Setup
 const { getAssemblyExports, getConfig } = await dotnet
@@ -67,19 +75,17 @@ const { getAssemblyExports, getConfig } = await dotnet
 
 const config = getConfig();
 const exports = await getAssemblyExports(config.mainAssemblyName);
+// NOTE: The user's provided code used 'Chip8EmulatorApi'. Adjust if your export name differs.
 const chip8 = exports.Chip8EmulatorApi;
 
 // HTML Canvas Setup
 const canvas = document.getElementById('display');
 const ctx = canvas.getContext('2d');
-const imageData = ctx.createImageData(64, 32);
-const pixelBuffer32 = new Uint32Array(imageData.data.buffer);
-
-// Color Parsing
-const onColorInt = parseInt(ON_COLOR.substring(1), 16);
-const offColorInt = parseInt(OFF_COLOR.substring(1), 16);
-const onColor32 = (0xFF << 24) | ((onColorInt & 0x0000FF) << 16) | (onColorInt & 0x00FF00) | ((onColorInt & 0xFF0000) >> 16);
-const offColor32 = (0xFF << 24) | ((offColorInt & 0x0000FF) << 16) | (offColorInt & 0x00FF00) | ((offColorInt & 0xFF0000) >> 16);
+let imageData = ctx.createImageData(64, 32);
+let pixelBuffer32 = new Uint32Array(imageData.data.buffer);
+// This buffer will store the brightness of each pixel (0.0 to 1.0)
+let phosphorBuffer = new Float32Array(64 * 32);
+let currentWidth = 0, currentHeight = 0;
 
 // Input Handling
 const keys = new Uint8Array(16);
@@ -117,7 +123,7 @@ function beep() {
 
 // Main Game Loop
 let lastTime = 0, cpuAccumulator = 0, timerAccumulator = 0;
-const cpuInterval = 1 / CPU_HZ;
+let cpuInterval = 1 / CPU_HZ;
 const timerInterval = 1 / TIMER_HZ;
 const maxDeltaTime = 1 / 15;
 let debugTimer = 0, frameCount = 0, cycleCount = 0, timerTickCount = 0, renderCount = 0;
@@ -143,14 +149,71 @@ function gameLoop(currentTime) {
         pollInput(); chip8.Step(); cycleCount++; cpuAccumulator -= cpuInterval;
     }
 
+    // Check if the emulator's internal screen state has changed.
     const graphics = chip8.GetGraphics();
-    if (graphics) render(graphics);
+    if (graphics) {
+        // If it has, update our brightness buffer and increment render count for debug.
+        updatePhosphorBuffer(graphics);
+        renderCount++;
+    }
+
+    // Always render the display on every frame to show the decay effect.
+    renderDisplay();
+
     if (chip8.ShouldBeep()) beep();
 }
 
-function render(graphics) {
-    for (let i = 0; i < graphics.length; i++) {
-        pixelBuffer32[i] = graphics[i] ? onColor32 : offColor32;
+// This function is now only called when the emulator's state changes.
+function updatePhosphorBuffer(graphics) {
+    const width = chip8.GetWidth();
+    const height = chip8.GetHeight();
+
+    if (width !== currentWidth || height !== currentHeight) {
+        canvas.width = width;
+        canvas.height = height;
+        const aspectRatio = width / height;
+        canvas.style.width = `${640}px`;
+        canvas.style.height = `${640 / aspectRatio}px`;
+
+        imageData = ctx.createImageData(width, height);
+        pixelBuffer32 = new Uint32Array(imageData.data.buffer);
+        phosphorBuffer = new Float32Array(width * height);
+        currentWidth = width;
+        currentHeight = height;
+        console.log(`size changed ${width}x${height}`);
+    }
+
+    // The C# buffer always has a memory width (stride) of 128
+    const sourceStride = 128;
+
+    // Use nested loops to correctly map pixels
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            // Index in the source buffer from C#
+            const sourceIndex = (y * sourceStride) + x;
+
+            // Index in the destination phosphor buffer (which is packed)
+            const destIndex = (y * width) + x;
+
+            if (graphics[sourceIndex]) {
+                phosphorBuffer[destIndex] = 1.0;
+            }
+        }
+    }
+}
+
+
+// This function now runs on every single animation frame.
+function renderDisplay() {
+    if (!phosphorBuffer) return; // Don't render if not initialized
+
+    for (let i = 0; i < phosphorBuffer.length; i++) {
+        const brightness = phosphorBuffer[i];
+        const r = OFF_COLOR.r + (ON_COLOR.r - OFF_COLOR.r) * brightness;
+        const g = OFF_COLOR.g + (ON_COLOR.g - OFF_COLOR.g) * brightness;
+        const b = OFF_COLOR.b + (ON_COLOR.b - OFF_COLOR.b) * brightness;
+        pixelBuffer32[i] = (255 << 24) | (b << 16) | (g << 8) | r;
+        phosphorBuffer[i] *= PHOSPHOR_DECAY_RATE;
     }
     ctx.putImageData(imageData, 0, 0);
 }
@@ -163,8 +226,12 @@ async function start(romFilename) {
         const romBytes = new Uint8Array(await response.arrayBuffer());
         chip8.Initialize(romBytes);
 
+
         console.log(`Loaded ROM: ${romFilename}`);
-        requestAnimationFrame((time) => { lastTime = time; requestAnimationFrame(gameLoop); });
+        // Only start the loop if it's the first time.
+        if (lastTime === 0) {
+            requestAnimationFrame((time) => { lastTime = time; requestAnimationFrame(gameLoop); });
+        }
     } catch (error) {
         console.error("Failed to load and start emulator:", error);
         document.body.innerHTML = `<h1 style="color: red;">Error loading ${romFilename}</h1>`;
@@ -175,21 +242,34 @@ async function start(romFilename) {
 const romSelector = document.getElementById("rom-selector");
 const romDescription = document.getElementById("rom-description");
 const romControls = document.getElementById("rom-controls");
+const clockSelector = document.getElementById("clock-selector");
 
-roms.forEach((rom, i) => {
-    const option = document.createElement("option");
-    option.value = rom.filename;
-    option.textContent = rom.name;
-    romSelector.appendChild(option);
-});
-romSelector.addEventListener("change", (e) => {
-    const selectedRom = roms.find(r => r.filename === e.target.value);
-    romDescription.textContent = selectedRom.description;
-    romControls.textContent = selectedRom.controls;
-    start(selectedRom.filename);
-});
-
-// Initialize with first ROM
-romSelector.value = roms[0].filename;
-romDescription.textContent = roms[0].description;
-start(roms[0].filename);
+if (romSelector) {
+    roms.forEach((rom) => {
+        const option = document.createElement("option");
+        option.value = rom.filename;
+        option.textContent = rom.name;
+        romSelector.appendChild(option);
+    });
+    romSelector.addEventListener("change", (e) => {
+        const selectedRom = roms.find(r => r.filename === e.target.value);
+        if (selectedRom) {
+            romDescription.textContent = selectedRom.description;
+            romControls.textContent = selectedRom.controls;
+            start(selectedRom.filename);
+        }
+    });
+    clockSelector.addEventListener("change", (e) => {
+        CPU_HZ = e.target.value
+        cpuInterval = 1 / CPU_HZ;
+    })
+    // Initialize with first ROM
+    const initialRom = roms[0];
+    romSelector.value = initialRom.filename;
+    romDescription.textContent = initialRom.description;
+    romControls.textContent = initialRom.controls;
+    start(initialRom.filename);
+} else {
+    // Fallback if the ROM selector isn't present in the HTML
+    start(ROM_PATH);
+}

@@ -28,12 +28,25 @@
       text-align: center;
       margin-bottom: 1rem;
     }
+    #github_link {
+      font-size: 0.8rem;
+      color: #88bbbb;
+      max-width: 640px;
+      text-align: center;
+      margin-top: 1rem;
+    }
     #rom-selector-container {
       margin-bottom: 1rem;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 0.25rem;
+    }
+    .selector-row {
+      display: flex;
+      flex-direction: row;
+      gap: 0.5rem;
+      align-items: center;
     }
     select {
       background: #1a1a1a;
@@ -42,6 +55,9 @@
       padding: 0.25rem 0.5rem;
       font-family: monospace;
       border-radius: 4px;
+    }
+    #clock-selector {
+      width: 120px; /* smaller than the ROM selector */
     }
     .description {
       font-size: 0.8rem;
@@ -71,18 +87,33 @@
 <div id="about">
   CHIP-8 is a lightweight interpreted virtual machine originally designed for 8-bit microcomputers.
   It features a 4K memory space, 16 8-bit registers, a 64×32 monochrome display, a stack for subroutines,
-  and simple timers for delay and sound. This emulator replicates the CHIP-8 hardware in software,
+  and simple timers for delay and sound. This emulator replicates the CHIP-8 architecture in software,
   written in C# and compiled into WebAssembly for execution directly in the browser.
-  Created by <a href="https://github.com/timmoth" target="_blank" style="color:#c0ffee;">Tim Jones</a>.
 </div>
 
 <div id="rom-selector-container">
-  <select id="rom-selector"></select>
+  <div class="selector-row">
+    <select id="rom-selector"></select>
+    <select id="clock-selector">
+      <option value="250">250 Hz</option>
+      <option value="500">500 Hz</option>
+      <option value="1000" selected="selected">1000 Hz</option>
+      <option value="2000">2000 Hz</option>
+    </select>
+  </div>
   <div class="description" id="rom-description"></div>
   <div class="controls" id="rom-controls"></div>
 </div>
 
 <canvas id="display" width="64" height="32"></canvas>
+
+<div id="github_link">
+  Created by <a href="https://github.com/timmoth" target="_blank" style="color:#c0ffee;">Tim Jones</a>.
+</div>
+<div id="github_link">
+  <a href="https://github.com/Timmoth/EmuChip" target="_blank" style="color:#c0ffee;">Source available on GitHub</a>.
+</div>
+
 
 <script type="module" src="main.js"></script>
 </body>

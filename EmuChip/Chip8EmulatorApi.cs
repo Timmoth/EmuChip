@@ -24,6 +24,20 @@ public static partial class Chip8EmulatorApi
         Emulator.Step();
     }
     
+        
+    [JSExport]
+    internal static int GetWidth()
+    {
+       return Emulator.Width;
+    }
+    
+        
+    [JSExport]
+    internal static int GetHeight()
+    {
+        return Emulator.Height;
+    }
+    
     [JSExport]
     internal static void UpdateTimers()
     {
@@ -33,13 +47,7 @@ public static partial class Chip8EmulatorApi
     [JSExport]
     internal static byte[]? GetGraphics()
     {
-        if (Emulator.DrawFlag)
-        {
-            Emulator.DrawFlag = false;
-            return Emulator.Graphics;
-        }
-
-        return null;
+        return Emulator.Graphics;
     }
 
     [JSExport]
