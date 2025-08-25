@@ -48,26 +48,30 @@
       gap: 0.5rem;
       align-items: center;
     }
-    /* Style for both selects and the new button */
-    select, button {
+    /* Style for selects, buttons, and the new label */
+    select, button, .upload-btn-label {
       background: #1a1a1a;
       border: 1px solid #c0ffee;
       color: #c0ffee;
       padding: 0.25rem 0.5rem;
       font-family: monospace;
       border-radius: 4px;
+      display: inline-block; /* For the label */
     }
     #clock-selector {
-      width: 120px; /* smaller than the ROM selector */
+      width: 120px;
     }
-    /* Added button-specific styles */
-    button {
+    button, .upload-btn-label {
       cursor: pointer;
       transition: background-color 0.2s, border-color 0.2s;
     }
-    button:hover {
+    button:hover, .upload-btn-label:hover {
       background-color: #222;
       border-color: #0ff;
+    }
+    /* Hide the actual file input */
+    input[type="file"] {
+      display: none;
     }
     .description {
       font-size: 0.8rem;
@@ -105,12 +109,17 @@
   <div class="selector-row">
     <select id="rom-selector"></select>
     <select id="clock-selector">
-      <option value="250">250 Hz</option>
       <option value="500">500 Hz</option>
-      <option value="1000" selected="selected">1000 Hz</option>
-      <option value="2000">2000 Hz</option>
+      <option value="1000" selected="selected">1 KHz</option>
+      <option value="2000">2 KHz</option>
+      <option value="10000">10 Khz</option>
+      <option value="100000">100 Khz</option>
     </select>
     <button id="disassemble-btn">Disassemble</button>
+    <!-- Hidden file input -->
+    <input type="file" id="rom-upload" accept=".ch8,.rom">
+    <!-- Styled label that acts as the button -->
+    <label for="rom-upload" class="upload-btn-label">Upload ROM</label>
   </div>
   <div class="description" id="rom-description"></div>
   <div class="controls" id="rom-controls"></div>

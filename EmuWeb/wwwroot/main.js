@@ -6,7 +6,7 @@ const roms = await romsRespone.json();
 
 // Constants
 let ROM_PATH = roms[0].filename;
-let CPU_HZ = 2000;
+let CPU_HZ = 1000;
 const TIMER_HZ = 60;
 const ON_COLOR = { r: 192, g: 255, b: 238 }; // #c0ffee
 const OFF_COLOR = { r: 0, g: 0, b: 0 };     // #000000
@@ -19,7 +19,6 @@ const { getAssemblyExports, getConfig } = await dotnet
 
 const config = getConfig();
 const exports = await getAssemblyExports(config.mainAssemblyName);
-// NOTE: The user's provided code used 'Chip8EmulatorApi'. Adjust if your export name differs.
 const chip8 = exports.Chip8EmulatorApi;
 
 // HTML Canvas Setup
@@ -39,13 +38,17 @@ const keyMap = {
     'a': 0x7, 's': 0x8, 'd': 0x9, 'f': 0xE,
     'z': 0xA, 'x': 0x0, 'c': 0xB, 'v': 0xF,
 };
+
+let keyChanged = false;
 window.addEventListener('keydown', (e) => {
     const key = e.key.toLowerCase();
     if (keyMap[key] !== undefined) keys[keyMap[key]] = 1;
+    keyChanged = true;
 });
 window.addEventListener('keyup', (e) => {
     const key = e.key.toLowerCase();
     if (keyMap[key] !== undefined) keys[keyMap[key]] = 0;
+    keyChanged = true;
 });
 function pollInput() { chip8.SetKeys(keys); }
 
@@ -71,20 +74,33 @@ function gameLoop(currentTime) {
     const deltaTime = (currentTime - lastTime) / 1000;
     lastTime = currentTime;
 
-    debugTimer += deltaTime; frameCount++;
-    if (debugTimer >= 1.0) {
-        console.log(`FPS: ${frameCount} | CPU: ${cycleCount} | Timers: ${timerTickCount} | Renders: ${renderCount}`);
-        debugTimer -= 1.0; frameCount = cycleCount = timerTickCount = renderCount = 0;
-    }
-
-    const effectiveDeltaTime = Math.min(deltaTime, maxDeltaTime);
-    cpuAccumulator += effectiveDeltaTime; timerAccumulator += effectiveDeltaTime;
-
+    // Timer Updates
+    timerAccumulator += deltaTime;
     if (timerAccumulator >= timerInterval) {
-        chip8.UpdateTimers(); timerTickCount++; timerAccumulator -= timerInterval;
+        chip8.UpdateTimers();
+        timerAccumulator -= timerInterval;
     }
+
+    // Add the time elapsed to our CPU cycle accumulator.
+    cpuAccumulator += deltaTime;
+
+    // Define a 'deadline' for this frame's CPU work to ensure smooth rendering.
+    const maxExecutionTimeMs = 8;
+    const loopStartTime = performance.now();
+
     while (cpuAccumulator >= cpuInterval) {
-        pollInput(); chip8.Step(); cycleCount++; cpuAccumulator -= cpuInterval;
+        if(keyChanged){
+            pollInput();
+            keyChanged = false;
+        }
+
+        chip8.Step(); 
+        cycleCount++; 
+        cpuAccumulator -= cpuInterval;
+        // Bail out of the loop if we're taking too long.
+        if (performance.now() - loopStartTime > maxExecutionTimeMs) {
+            break; 
+        }
     }
 
     // Check if the emulator's internal screen state has changed.
@@ -98,8 +114,8 @@ function gameLoop(currentTime) {
     // Always render the display on every frame to show the decay effect.
     renderDisplay();
 
-    if (chip8.ShouldBeep()){
-        if(!isBeeping){
+    if (chip8.ShouldBeep()) {
+        if (!isBeeping) {
             oscillator = audioContext.createOscillator();
             const gain = audioContext.createGain();
             oscillator.connect(gain); gain.connect(audioContext.destination);
@@ -110,13 +126,19 @@ function gameLoop(currentTime) {
             gain.gain.linearRampToValueAtTime(0.1, now + 0.15);
             gain.gain.linearRampToValueAtTime(0, now + 0.3);
             oscillator.start(audioContext.currentTime);
-            isBeeping = true;   
+            isBeeping = true;
         }
-    }else{
-        if(isBeeping){
+    } else {
+        if (isBeeping) {
             oscillator.stop(audioContext.currentTime);
             isBeeping = false;
         }
+    }
+
+    debugTimer += deltaTime; frameCount++;
+    if (debugTimer >= 1.0) {
+        console.log(`FPS: ${frameCount} | CPU: ${cycleCount} | Timers: ${timerTickCount} | Renders: ${renderCount}`);
+        debugTimer -= 1.0; frameCount = cycleCount = timerTickCount = renderCount = 0;
     }
 }
 
@@ -183,7 +205,6 @@ async function start(romFilename) {
         const romBytes = new Uint8Array(await response.arrayBuffer());
         chip8.Initialize(romBytes);
 
-
         console.log(`Loaded ROM: ${romFilename}`);
         // Only start the loop if it's the first time.
         if (lastTime === 0) {
@@ -201,6 +222,7 @@ const romDescription = document.getElementById("rom-description");
 const romControls = document.getElementById("rom-controls");
 const clockSelector = document.getElementById("clock-selector");
 const disassembleBtn = document.getElementById("disassemble-btn");
+const romUpload = document.getElementById("rom-upload");
 
 let selectedRomName = null;
 if (romSelector) {
@@ -238,5 +260,24 @@ if (romSelector) {
     // Fallback if the ROM selector isn't present in the HTML
     start(ROM_PATH);
 }
+
+  // Handle file upload
+  romUpload.addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    document.getElementById("rom-description").textContent = `Uploaded: ${file.name}`;
+    const buffer = await file.arrayBuffer();
+    const romBytes = new Uint8Array(buffer);
+    chip8.Initialize(romBytes);
+
+    console.log(`Loaded ROM: ${romFilename}`);
+    // Only start the loop if it's the first time.
+    if (lastTime === 0) {
+        requestAnimationFrame((time) => { lastTime = time; requestAnimationFrame(gameLoop); });
+    }
+
+  });
+
 
 SetupAudio();

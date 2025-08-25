@@ -9,7 +9,7 @@ while (pc < romBytes.Length)
     pc += size;
 }
 
-var romFilename = "Space Invaders [David Winter, 1997].ch8";
+var romFilename = "benchmark.ch8";
 if (args.Length > 0)
     romFilename = args[0];
 else
