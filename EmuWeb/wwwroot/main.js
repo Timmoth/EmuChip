@@ -51,18 +51,12 @@ function pollInput() { chip8.SetKeys(keys); }
 
 // Audio
 let audioContext;
-function beep() {
+
+let isBeeping = false;
+let oscillator = null;
+function SetupAudio() {
     if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gain = audioContext.createGain();
-    oscillator.connect(gain); gain.connect(audioContext.destination);
-    oscillator.type = 'sine'; oscillator.frequency.value = 440;
-    const now = audioContext.currentTime;
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.1, now + 0.02);
-    gain.gain.linearRampToValueAtTime(0.1, now + 0.15);
-    gain.gain.linearRampToValueAtTime(0, now + 0.3);
-    oscillator.start(now); oscillator.stop(now + 0.3);
+
 }
 
 // Main Game Loop
@@ -104,7 +98,26 @@ function gameLoop(currentTime) {
     // Always render the display on every frame to show the decay effect.
     renderDisplay();
 
-    if (chip8.ShouldBeep()) beep();
+    if (chip8.ShouldBeep()){
+        if(!isBeeping){
+            oscillator = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            oscillator.connect(gain); gain.connect(audioContext.destination);
+            oscillator.type = 'sine'; oscillator.frequency.value = 440;
+            const now = audioContext.currentTime;
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.1, now + 0.02);
+            gain.gain.linearRampToValueAtTime(0.1, now + 0.15);
+            gain.gain.linearRampToValueAtTime(0, now + 0.3);
+            oscillator.start(audioContext.currentTime);
+            isBeeping = true;   
+        }
+    }else{
+        if(isBeeping){
+            oscillator.stop(audioContext.currentTime);
+            isBeeping = false;
+        }
+    }
 }
 
 // This function is now only called when the emulator's state changes.
@@ -225,3 +238,5 @@ if (romSelector) {
     // Fallback if the ROM selector isn't present in the HTML
     start(ROM_PATH);
 }
+
+SetupAudio();

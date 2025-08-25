@@ -13,7 +13,8 @@ public class Chip8Emulator
     private readonly Action<ushort>[] _dispatch;
     private readonly byte[] _memory = new byte[4096];
     private readonly Random _random = new();
-
+    private bool _isHalted = true;
+    
     private readonly byte[] _schipSprites =
     {
         0x7C, 0x82, 0x82, 0x82, 0x82, 0x82, 0x82, 0x82, 0x7C, 0x00,
@@ -56,7 +57,7 @@ public class Chip8Emulator
     private bool _isWaitingForKey;
     private int _keyRegisterX;
     private ushort _pc;
-    private byte _soundTimer;
+    public byte _soundTimer;
     private ushort _sp;
 
     public Chip8Emulator()
@@ -106,8 +107,7 @@ public class Chip8Emulator
     public byte[] Graphics { get; } = new byte[128 * 64];
 
     public byte[] Keys { get; } = new byte[16];
-    public bool DrawFlag { get; set; }
-    public bool ShouldBeep { get; set; }
+    public bool ShouldBeep => _soundTimer > 0;
 
     // Expose resolution
     public int Width { get; private set; } = 64;
@@ -123,8 +123,6 @@ public class Chip8Emulator
         _soundTimer = 0;
         _isWaitingForKey = false;
         _keyRegisterX = 0;
-        DrawFlag = false;
-        ShouldBeep = false;
 
         SetLowRes(); // sets _width/_height and will clear below
 
@@ -142,10 +140,16 @@ public class Chip8Emulator
             throw new ArgumentException("ROM too large for memory");
 
         Array.Copy(romBytes, 0, _memory, 512, romBytes.Length);
+        _isHalted = false;
     }
 
     public void Step()
     {
+        if (_isHalted)
+        {
+            return;
+        }
+        
         if (_isWaitingForKey)
         {
             for (byte i = 0; i < Keys.Length; i++)
@@ -176,7 +180,6 @@ public class Chip8Emulator
         if (_soundTimer > 0)
         {
             _soundTimer--;
-            if (_soundTimer == 0) ShouldBeep = true;
         }
     }
 
@@ -188,7 +191,6 @@ public class Chip8Emulator
             case 0x00E0:
                 // Clear entire backing buffer (safe)
                 Array.Clear(Graphics, 0, Graphics.Length);
-                DrawFlag = true;
                 break;
             case 0x00EE:
                 _pc = _stack[--_sp];
@@ -201,7 +203,8 @@ public class Chip8Emulator
                     {
                         case 0x00FB: ScrollRight4(); break;
                         case 0x00FC: ScrollLeft4(); break;
-                        case 0x00FD: /* interpreter exit - no-op here */
+                        case 0x00FD:
+                            _isHalted = true;
                             break;
                         case 0x00FE: SetLowRes(); break;
                         case 0x00FF: SetHighRes(); break;
@@ -222,26 +225,31 @@ public class Chip8Emulator
             case 0x3: _v[x] ^= _v[y]; break;
             case 0x4:
             {
-                var sum = _v[x] + _v[y];
-                _v[0xF] = (byte)(sum > 255 ? 1 : 0);
+                int sum = _v[x] + _v[y];
+                byte carry = (byte)(sum > 255 ? 1 : 0);
                 _v[x] = (byte)sum;
+                _v[0xF] = carry;
                 break;
             }
             case 0x5:
-                _v[0xF] = (byte)(_v[x] > _v[y] ? 1 : 0);
+                byte nb1 = (byte)(_v[x] >= _v[y] ? 1 : 0);
                 _v[x] = (byte)(_v[x] - _v[y]);
+                _v[0xF] = nb1;
                 break;
             case 0x6:
-                _v[0xF] = (byte)(_v[x] & 1);
+                byte lsb = (byte)(_v[x] & 1);
                 _v[x] >>= 1;
+                _v[0xF] = lsb;
                 break;
             case 0x7:
-                _v[0xF] = (byte)(_v[y] > _v[x] ? 1 : 0);
+                byte nb2 = (byte)(_v[y] >= _v[x] ? 1 : 0);
                 _v[x] = (byte)(_v[y] - _v[x]);
+                _v[0xF] = nb2;
                 break;
             case 0xE:
-                _v[0xF] = (byte)(_v[x] >> 7);
+                byte msb = (byte)(_v[x] >> 7);
                 _v[x] <<= 1;
+                _v[0xF] = msb;
                 break;
         }
     }
@@ -265,24 +273,24 @@ public class Chip8Emulator
             if (height == 0) height = 16; // defensive
             DrawSpriteGeneric(startX, startY, 8, height);
         }
-
-        DrawFlag = true;
     }
 
     private void HandleE(ushort op)
     {
         var x = (op & 0x0F00) >> 8;
+        var key = _v[x] & 0x0F; 
         switch (op & 0x00FF)
         {
             case 0x9E:
-                if (_v[x] < Keys.Length && Keys[_v[x]] != 0) _pc += 2;
+                if (Keys[key] != 0) _pc += 2;
                 break;
             case 0xA1:
-                if (_v[x] < Keys.Length && Keys[_v[x]] == 0) _pc += 2;
+                if (Keys[key] == 0) _pc += 2;
                 break;
         }
     }
 
+    private readonly byte[] _rpl = new byte[8]; 
     private void HandleF(ushort op)
     {
         var x = (op & 0x0F00) >> 8;
@@ -296,8 +304,8 @@ public class Chip8Emulator
             case 0x15: _delayTimer = _v[x]; break;
             case 0x18: _soundTimer = _v[x]; break;
             case 0x1E: _i = (ushort)(_i + _v[x]); break;
-            case 0x29: _i = (ushort)(SmallFontBase + _v[x] * 5); break;
-            case 0x30: _i = (ushort)(BigFontBase + _v[x] * BigFontGlyphSize); break;
+            case 0x29: _i = (ushort)(SmallFontBase +  (byte)(_v[x] & 0x0F) * 5); break;
+            case 0x30: _i = (ushort)(BigFontBase + (byte)(_v[x] & 0x0F) * BigFontGlyphSize); break;
             case 0x33:
                 _memory[_i] = (byte)(_v[x] / 100);
                 _memory[_i + 1] = (byte)(_v[x] / 10 % 10);
@@ -310,10 +318,16 @@ public class Chip8Emulator
                 for (var j = 0; j <= x; j++) _v[j] = _memory[_i + j];
                 break;
             case 0x75:
-                for (var j = 0; j <= x && j < 8; j++) _memory[0xF00 + j] = _v[j];
+                for (var j = 0; j <= x && j < 8; j++)
+                {
+                    _rpl[j] = _v[j];
+                }
                 break;
             case 0x85:
-                for (var j = 0; j <= x && j < 8; j++) _v[j] = _memory[0xF00 + j];
+                for (var j = 0; j <= x && j < 8; j++)
+                {
+                    _v[j] = _rpl[j];
+                }
                 break;
         }
     }
@@ -327,7 +341,6 @@ public class Chip8Emulator
         Height = 64;
         // clear the entire backing buffer to avoid artifacts
         Array.Clear(Graphics, 0, Graphics.Length);
-        DrawFlag = true;
     }
 
     private void SetLowRes()
@@ -337,7 +350,6 @@ public class Chip8Emulator
         Height = 32;
         // clear the entire backing buffer to avoid artifacts
         Array.Clear(Graphics, 0, Graphics.Length);
-        DrawFlag = true;
     }
 
     // Generic sprite drawer using explicit row stride of 128.
@@ -383,7 +395,6 @@ public class Chip8Emulator
         if (n >= Height)
         {
             Array.Clear(Graphics, 0, Graphics.Length);
-            DrawFlag = true;
             return;
         }
 
@@ -402,8 +413,6 @@ public class Chip8Emulator
         // clear top n rows
         for (var row = 0; row < n; row++)
             Array.Clear(Graphics, row * 128, Width);
-
-        DrawFlag = true;
     }
 
     private void ScrollLeft4()
@@ -422,8 +431,6 @@ public class Chip8Emulator
             // clear any extra right columns if hi-res
             if (Width < 128) Array.Clear(Graphics, baseIdx + Width, 128 - Width);
         }
-
-        DrawFlag = true;
     }
 
     private void ScrollRight4()
@@ -440,7 +447,5 @@ public class Chip8Emulator
 
             if (Width < 128) Array.Clear(Graphics, baseIdx + Width, 128 - Width);
         }
-
-        DrawFlag = true;
     }
 }

@@ -60,11 +60,6 @@ public static partial class Chip8EmulatorApi
     [JSExport]
     internal static bool ShouldBeep()
     {
-        if (Emulator.ShouldBeep)
-        {
-            Emulator.ShouldBeep = false;
-            return true;
-        }
-        return false;
+        return Emulator.ShouldBeep;
     }
 }

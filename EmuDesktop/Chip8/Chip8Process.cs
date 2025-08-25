@@ -43,19 +43,14 @@ public class Chip8Process
             _updateAccumulator -= UpdateStep;
         }
 
-        if (_emulator.DrawFlag)
-        {
-            var width = _emulator.Width;
-            var height = _emulator.Height;
+        var width = _emulator.Width;
+        var height = _emulator.Height;
             
-            _window.RequestRender(_emulator.Graphics, width, height);
-            _emulator.DrawFlag = false;
-        }
-
+        _window.RequestRender(_emulator.Graphics, width, height);
+        
         if (_emulator.ShouldBeep)
         {
             Console.Beep();
-            _emulator.ShouldBeep = false;
         }
     }
 }
